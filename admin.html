@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>チューター専用ダッシュボード</title>
+  <style>
+    body { font-family: sans-serif; padding: 16px; background-color: #f9f9f9; color: #333; margin: 0; }
+    h1 { font-size: 1.5rem; text-align: center; }
+    h2 { font-size: 1.2rem; border-bottom: 2px solid #007bff; padding-bottom: 4px; margin-top: 24px; }
+    .card { background: #fff; padding: 12px; margin-bottom: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .highlight { color: #d9534f; font-weight: bold; font-size: 1.2rem; }
+    .error-box { background: #fee; border: 1px solid #fcc; padding: 16px; border-radius: 8px; color: #c00; margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>利用状況ダッシュボード</h1>
+
+  <h2>🔥 生徒の連続ログイン状況</h2>
+  <div id="stats-list">データを読み込んでいます...</div>
+
+  <h2>📅 日毎のアクセス履歴</h2>
+  <div id="usage-list">データを読み込んでいます...</div>
+
+  <div id="error-container"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBQyvZ7BPAttBd5tty9oquiX5vCz_m3Ad0",
+      authDomain: "studytime-8d240.firebaseapp.com",
+      projectId: "studytime-8d240",
+      storageBucket: "studytime-8d240.firebasestorage.app",
+      messagingSenderId: "686516235281",
+      appId: "1:686516235281:web:0717f2e4be39931cc3d5b0"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function loadDashboard() {
+      try {
+        // --- 連続ログイン日数の取得と表示 ---
+        const statsSnap = await getDocs(collection(db, "users"));
+        const statsData = statsSnap.docs.map(doc => doc.data());
+        
+        // 有効なユーザーデータのみフィルタリング
+        const validStats = statsData.filter(user => user && (user.userName || user.userId));
+
+        const statsDiv = document.getElementById("stats-list");
+        if (validStats.length === 0) {
+          statsDiv.innerHTML = "<p>有効なユーザーデータがありません。</p>";
+        } else {
+          validStats.sort((a, b) => (b.streakCount || 0) - (a.streakCount || 0));
+          
+          statsDiv.innerHTML = validStats.map(user => {
+            const displayName = user.userName || user.userId;
+            return `
+              <div class="card">
+                生徒名: <strong>${displayName}</strong><br>
+                連続ログイン: <span class="highlight">${user.streakCount || 0} 日</span><br>
+                <small style="color:#666;">最終ログイン日: ${user.lastLoginDate}</small>
+              </div>
+            `;
+          }).join('');
+        }
+
+        // --- 日毎の利用回数の取得と表示 ---
+        const usageSnap = await getDocs(query(collection(db, "daily_usage"), orderBy("date", "desc")));
+        const usageData = usageSnap.docs.map(doc => doc.data());
+
+        const usageDiv = document.getElementById("usage-list");
+        if (usageData.length === 0) {
+          usageDiv.innerHTML = "<p>利用記録がありません。</p>";
+        } else {
+          usageDiv.innerHTML = usageData.map(u => {
+            const displayName = u.userName || u.userId;
+            return `
+              <div class="card">
+                日付: ${u.date} | 生徒名: ${displayName}<br>
+                利用回数: <strong>${u.count} 回</strong>
+              </div>
+            `;
+          }).join('');
+        }
+
+      } catch (error) {
+        console.error("データ取得エラー:", error);
+        document.getElementById("stats-list").innerHTML = "読み込み失敗";
+        document.getElementById("usage-list").innerHTML = "読み込み失敗";
+        
+        document.getElementById("error-container").innerHTML = `
+          <div class="error-box">
+            データの読み取りに失敗しました。<br>
+            詳細: ${error.message}
+          </div>
+        `;
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>
+
