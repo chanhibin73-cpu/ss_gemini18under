@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>チューター専用ダッシュボード</title>
+  <style>
+    /* スマホでも見やすいデザイン */
+    body { font-family: sans-serif; padding: 16px; background-color: #f9f9f9; color: #333; }
+    h2 { font-size: 1.2rem; border-bottom: 2px solid #007bff; padding-bottom: 4px; margin-top: 24px; }
+    .card { background: #fff; padding: 12px; margin-bottom: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .highlight { color: #d9534f; font-weight: bold; font-size: 1.2rem; }
+  </style>
+</head>
+<body>
+  <h1>利用状況ダッシュボード</h1>
+
+  <h2>🔥 生徒の連続ログイン状況</h2>
+  <div id="stats-list">データを読み込んでいます...</div>
+
+  <h2>📅 日毎のアクセス履歴</h2>
+  <div id="usage-list">データを読み込んでいます...</div>
+
+  <script type="module">
+    import { getUsersStats, getDailyUsageList } from './api.js';
+
+    async function loadDashboard() {
+      try {
+        // 1. 連続ログイン日数の表示
+        const statsData = await getUsersStats();
+        const statsDiv = document.getElementById("stats-list");
+        
+        if (statsData.length === 0) {
+          statsDiv.innerHTML = "<p>ユーザーデータがありません。</p>";
+        } else {
+          statsDiv.innerHTML = statsData.map(user => `
+            <div class="card">
+              生徒ID: <strong>${user.userId}</strong><br>
+              連続ログイン: <span class="highlight">${user.streakCount} 日</span><br>
+              <small style="color:#666;">最終ログイン日: ${user.lastLoginDate}</small>
+            </div>
+          `).join('');
+        }
+
+        // 2. 日毎の利用回数の表示
+        const usageData = await getDailyUsageList();
+        const usageDiv = document.getElementById("usage-list");
+        
+        if (usageData.length === 0) {
+          usageDiv.innerHTML = "<p>利用記録がありません。</p>";
+        } else {
+          usageDiv.innerHTML = usageData.map(u => `
+            <div class="card">
+              日付: ${u.date} | 生徒ID: ${u.userId}<br>
+              利用回数: <strong>${u.count} 回</strong>
+            </div>
+          `).join('');
+        }
+      } catch (error) {
+        console.error(error);
+        document.body.innerHTML += `<p style="color:red">データの読み込みに失敗しました。</p>`;
+      }
+    }
+
+    // 画面読み込み時に実行
+    loadDashboard();
+  </script>
+</body>
+</html>
